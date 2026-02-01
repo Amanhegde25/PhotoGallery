@@ -1,6 +1,6 @@
-pandas
-numpy
 Flask
-pymongo
 flask-pymongo
+pymongo[srv]
 python-dotenv
+dnspython
+Werkzeug

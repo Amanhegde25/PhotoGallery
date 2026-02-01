@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_pymongo import PyMongo
 from dotenv import load_dotenv
 from src.logger import logger
@@ -12,21 +12,41 @@ load_dotenv()
 app = Flask(__name__)
 
 # Flask Configuration
-app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb://localhost:27017/portfoleo")
+mongo_uri = os.getenv("MONGO_URI")
+if not mongo_uri:
+    logger.error("MONGO_URI environment variable is not set!")
+    
+app.config["MONGO_URI"] = mongo_uri or "mongodb://localhost:27017/portfoleo"
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "default-secret-key")
 
-mongo = PyMongo(app)
+# Initialize MongoDB with error handling
+mongo = None
+try:
+    mongo = PyMongo(app)
+    # Test connection
+    mongo.db.command('ping')
+    logger.info("MongoDB connected successfully")
+except Exception as e:
+    logger.error(f"MongoDB connection failed: {e}")
 
 # Upload Configuration from .env
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.getenv("UPLOAD_FOLDER", "upload"))
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = int(os.getenv("MAX_CONTENT_LENGTH", 16 * 1024 * 1024))
 
-# Register blueprints
-image_routes = create_image_routes(mongo, UPLOAD_FOLDER)
-auth_routes = create_auth_routes()
-app.register_blueprint(image_routes)
-app.register_blueprint(auth_routes)
+# Register blueprints only if mongo is available
+if mongo:
+    image_routes = create_image_routes(mongo, UPLOAD_FOLDER)
+    auth_routes = create_auth_routes()
+    app.register_blueprint(image_routes)
+    app.register_blueprint(auth_routes)
+else:
+    @app.route("/")
+    def error_page():
+        return jsonify({
+            "error": "Database not configured",
+            "message": "Please set MONGO_URI environment variable in Vercel"
+        }), 500
 
 
 @app.route("/health")
@@ -47,3 +67,4 @@ if __name__ == "__main__":
     
     logger.info("Starting Flask server")
     app.run(debug=False, host=host, port=port, use_reloader=False)
+
