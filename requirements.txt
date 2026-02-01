@@ -4,5 +4,3 @@ Flask
 pymongo
 flask-pymongo
 python-dotenv
-
--e .
