@@ -15,7 +15,11 @@ def allowed_file(filename):
 
 def get_all_images(mongo):
     logger.info("Fetching all images from database")
-    return list(mongo.db.images.find().sort("_id", -1))
+    try:
+        return list(mongo.db.images.find().sort("_id", -1))
+    except Exception as e:
+        logger.error(f"Error fetching images: {e}")
+        return []
 
 
 def get_image_by_id(mongo, image_id):
