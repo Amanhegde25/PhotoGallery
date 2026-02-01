@@ -18,10 +18,6 @@ if not mongo_uri:
     
 app.config["MONGO_URI"] = mongo_uri or "mongodb://localhost:27017/portfoleo"
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "default-secret-key")
-
-# Upload Configuration from .env
-UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), os.getenv("UPLOAD_FOLDER", "upload"))
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = int(os.getenv("MAX_CONTENT_LENGTH", 16 * 1024 * 1024))
 
 # Initialize MongoDB
@@ -40,7 +36,7 @@ except Exception as e:
         mongo = PyMongo(app)
 
 # Always register blueprints (routes will handle DB errors gracefully)
-image_routes = create_image_routes(mongo, UPLOAD_FOLDER)
+image_routes = create_image_routes(mongo)
 auth_routes = create_auth_routes()
 app.register_blueprint(image_routes)
 app.register_blueprint(auth_routes)
@@ -66,9 +62,6 @@ def debug_env():
 
 
 if __name__ == "__main__":
-    # Ensure upload folder exists
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    
     # Get Flask config from .env
     debug = os.getenv("FLASK_DEBUG", "True").lower() == "true"
     host = os.getenv("FLASK_HOST", "127.0.0.1")

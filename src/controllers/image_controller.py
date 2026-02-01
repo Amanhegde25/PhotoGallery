@@ -1,16 +1,33 @@
-from flask import request, url_for
+from flask import request, url_for, Response
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from src.logger import logger
 from bson import ObjectId
-import os
+from gridfs import GridFS
+import io
 
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
+# Content type mapping for serving images
+CONTENT_TYPES = {
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'gif': 'image/gif',
+    'webp': 'image/webp'
+}
+
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def get_file_extension(filename):
+    """Get the file extension from filename"""
+    if '.' in filename:
+        return filename.rsplit('.', 1)[1].lower()
+    return 'jpg'  # Default
 
 
 def get_all_images(mongo):
@@ -30,6 +47,26 @@ def get_image_by_id(mongo, image_id):
         return None
 
 
+def get_image_file(mongo, image_id):
+    """Get the image file data from GridFS"""
+    try:
+        image = mongo.db.images.find_one({"_id": ObjectId(image_id)})
+        if not image or 'file_id' not in image:
+            return None, None
+        
+        fs = GridFS(mongo.db)
+        grid_out = fs.get(image['file_id'])
+        
+        # Get content type from extension
+        extension = image.get('extension', 'jpg')
+        content_type = CONTENT_TYPES.get(extension, 'image/jpeg')
+        
+        return grid_out.read(), content_type
+    except Exception as e:
+        logger.error(f"Error retrieving image file: {e}")
+        return None, None
+
+
 def update_image(mongo, image_id, update_data):
     """Update image metadata"""
     try:
@@ -42,15 +79,15 @@ def update_image(mongo, image_id, update_data):
         return False
 
 
-def delete_image(mongo, image_id, upload_folder):
-    """Delete image from database and file system"""
+def delete_image(mongo, image_id):
+    """Delete image from database and GridFS"""
     try:
         image = mongo.db.images.find_one({"_id": ObjectId(image_id)})
         if image:
-            # Delete file from disk
-            file_path = os.path.join(upload_folder, image['img_path'])
-            if os.path.exists(file_path):
-                os.remove(file_path)
+            # Delete file from GridFS
+            if 'file_id' in image:
+                fs = GridFS(mongo.db)
+                fs.delete(image['file_id'])
             
             # Delete from database
             mongo.db.images.delete_one({"_id": ObjectId(image_id)})
@@ -60,7 +97,7 @@ def delete_image(mongo, image_id, upload_folder):
     return False
 
 
-def upload_image(mongo, upload_folder):
+def upload_image(mongo):
     # Check if file is present
     if 'image' not in request.files:
         logger.warning("No image file in request")
@@ -74,15 +111,28 @@ def upload_image(mongo, upload_folder):
     
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
+        extension = get_file_extension(filename)
+        
         # Add timestamp to filename to avoid duplicates
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_")
         filename = timestamp + filename
-        filepath = os.path.join(upload_folder, filename)
-        file.save(filepath)
+        
+        # Read file data
+        file_data = file.read()
+        
+        # Store in GridFS
+        fs = GridFS(mongo.db)
+        file_id = fs.put(
+            file_data,
+            filename=filename,
+            content_type=CONTENT_TYPES.get(extension, 'image/jpeg')
+        )
         
         # Save metadata to MongoDB
         image_data = {
-            "img_path": filename,
+            "file_id": file_id,
+            "filename": filename,
+            "extension": extension,
             "title": request.form.get("title", "Untitled"),
             "caption": request.form.get("caption", ""),
             "location": request.form.get("location", ""),
@@ -91,7 +141,7 @@ def upload_image(mongo, upload_folder):
         }
         
         mongo.db.images.insert_one(image_data)
-        logger.info(f"Image uploaded: {filename}")
+        logger.info(f"Image uploaded to GridFS: {filename}")
         
         return True, url_for("image_routes.gallery")
     

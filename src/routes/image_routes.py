@@ -1,10 +1,10 @@
-from flask import Blueprint, render_template, request, redirect, send_from_directory, session, url_for
-from src.controllers.image_controller import get_all_images, upload_image, get_image_by_id, update_image, delete_image
+from flask import Blueprint, render_template, request, redirect, session, url_for, Response
+from src.controllers.image_controller import get_all_images, upload_image, get_image_by_id, get_image_file, update_image, delete_image
 from src.routes.auth_routes import login_required
 from src.logger import logger
 
 
-def create_image_routes(mongo, upload_folder):    
+def create_image_routes(mongo):    
     image_bp = Blueprint('image_routes', __name__)
     
     @image_bp.route("/")
@@ -18,7 +18,7 @@ def create_image_routes(mongo, upload_folder):
     @login_required
     def upload():
         if request.method == "POST":
-            success, redirect_url = upload_image(mongo, upload_folder)
+            success, redirect_url = upload_image(mongo)
             if success:
                 return redirect(redirect_url)
             return redirect(request.url)
@@ -49,12 +49,17 @@ def create_image_routes(mongo, upload_folder):
     @image_bp.route("/delete/<image_id>", methods=["POST"])
     @login_required
     def delete(image_id):
-        delete_image(mongo, image_id, upload_folder)
+        delete_image(mongo, image_id)
         logger.info(f"Image {image_id} deleted")
         return redirect(url_for('image_routes.gallery'))
     
-    @image_bp.route("/uploads/<filename>")
-    def serve_image(filename):
-        return send_from_directory(upload_folder, filename)
+    @image_bp.route("/image/<image_id>")
+    def serve_image(image_id):
+        """Serve image from GridFS"""
+        file_data, content_type = get_image_file(mongo, image_id)
+        if file_data is None:
+            return "Image not found", 404
+        
+        return Response(file_data, mimetype=content_type)
     
     return image_bp

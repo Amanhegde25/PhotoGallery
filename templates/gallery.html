@@ -47,7 +47,7 @@
             {% for image in images %}
             <article class="image-card">
                 <div class="image-wrapper">
-                    <img src="{{ url_for('image_routes.serve_image', filename=image.img_path) }}"
+                    <img src="{{ url_for('image_routes.serve_image', image_id=image._id) }}"
                         alt="{{ image.title }}">
                     <div class="image-overlay">
                         <h3 class="image-title">{{ image.title }}</h3>
