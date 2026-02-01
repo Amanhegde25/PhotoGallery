@@ -1,0 +1,8 @@
+pandas
+numpy
+Flask
+pymongo
+flask-pymongo
+python-dotenv
+
+-e .
