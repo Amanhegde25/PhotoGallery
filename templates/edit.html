@@ -1,59 +1,52 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Photo | Portfolio</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/upload.css') }}">
-</head>
+{% block title %}Edit Photo | Portfolio{% endblock %}
 
-<body>
-    <header class="header">
-        <a href="{{ url_for('image_routes.gallery') }}" class="logo">Gallery</a>
-        <a href="{{ url_for('image_routes.gallery') }}" class="back-btn">← Back to Gallery</a>
-    </header>
+{% block body_class %}form-page{% endblock %}
 
-    <main class="container">
-        <div class="upload-card">
-            <div class="card-title">
-                <h1>Edit Photo</h1>
-                <p>Update photo details</p>
+{% block header_actions %}
+<a href="{{ url_for('image_routes.gallery') }}" class="back-btn">← Back to Gallery</a>
+{% endblock %}
+
+{% block main_class %}container form-container{% endblock %}
+
+{% block content %}
+<div class="upload-card">
+    <div class="card-title">
+        <h1>Edit Photo</h1>
+        <p>Update photo details</p>
+    </div>
+
+    <form action="{{ url_for('image_routes.edit', image_id=image._id) }}" method="POST">
+        <div class="form-group">
+            <label>Current Photo</label>
+            <div style="text-align: center; margin-bottom: 1rem;">
+                <img src="{{ url_for('image_routes.serve_image', image_id=image._id) }}" alt="{{ image.title }}"
+                    style="max-width: 100%; max-height: 200px; border-radius: 10px;">
             </div>
-
-            <form action="{{ url_for('image_routes.edit', image_id=image._id) }}" method="POST">
-                <div class="form-group">
-                    <label>Current Photo</label>
-                    <div style="text-align: center; margin-bottom: 1rem;">
-                        <img src="{{ url_for('image_routes.serve_image', image_id=image._id) }}" alt="{{ image.title }}"
-                            style="max-width: 100%; max-height: 200px; border-radius: 10px;">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="title">Title *</label>
-                    <input type="text" id="title" name="title" value="{{ image.title }}" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="caption">Caption</label>
-                    <textarea id="caption" name="caption">{{ image.caption }}</textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="location">Location</label>
-                    <input type="text" id="location" name="location" value="{{ image.location }}">
-                </div>
-
-                <div class="form-group">
-                    <label for="taken_time">Date & Time Taken</label>
-                    <input type="datetime-local" id="taken_time" name="taken_time" value="{{ image.taken_time }}">
-                </div>
-
-                <button type="submit" class="submit-btn">Save Changes</button>
-            </form>
         </div>
-    </main>
-</body>
 
-</html>
+        <div class="form-group">
+            <label for="title">Title *</label>
+            <input type="text" id="title" name="title" value="{{ image.title }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="caption">Caption</label>
+            <textarea id="caption" name="caption">{{ image.caption }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="location">Location</label>
+            <input type="text" id="location" name="location" value="{{ image.location }}">
+        </div>
+
+        <div class="form-group">
+            <label for="taken_time">Date & Time Taken</label>
+            <input type="datetime-local" id="taken_time" name="taken_time" value="{{ image.taken_time }}">
+        </div>
+
+        <button type="submit" class="submit-btn">Save Changes</button>
+    </form>
+</div>
+{% endblock %}

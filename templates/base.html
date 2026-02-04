@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="{% block meta_description %}Nochur Photo Lab - A beautiful photo gallery{% endblock %}">
+    <meta name="author" content="Nochur Photo Lab">
+    <meta name="theme-color" content="#12141a">
+
+    <title>{% block title %}Portfolio{% endblock %}</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+
+    <!-- Additional Page Styles -->
+    {% block styles %}{% endblock %}
+</head>
+
+<body class="{% block body_class %}{% endblock %}">
+    <!-- Header -->
+    <header class="header">
+        <a href="{{ url_for('image_routes.gallery') }}" class="logo">Nochur Photo Lab</a>
+        <div class="header-actions">
+            {% block header_actions %}{% endblock %}
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="{% block main_class %}container{% endblock %}">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer (optional) -->
+    {% block footer %}{% endblock %}
+
+    <!-- Main Script -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+
+    <!-- Additional Page Scripts -->
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>
