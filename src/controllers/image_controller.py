@@ -39,6 +39,73 @@ def get_all_images(mongo):
         return []
 
 
+def get_images_by_tag(mongo, tag):
+    """Get all images with a specific tag"""
+    logger.info(f"Fetching images with tag: {tag}")
+    try:
+        return list(mongo.db.images.find({"tags": tag}).sort("_id", -1))
+    except Exception as e:
+        logger.error(f"Error fetching images by tag: {e}")
+        return []
+
+
+def get_all_tags(mongo):
+    """Get all unique tags from all images with counts"""
+    try:
+        pipeline = [
+            {"$unwind": "$tags"},
+            {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}}
+        ]
+        result = list(mongo.db.images.aggregate(pipeline))
+        # Return just tag names for backward compatibility
+        return [item["_id"] for item in result]
+    except Exception as e:
+        logger.error(f"Error fetching tags: {e}")
+        return []
+
+
+def get_tags_with_counts(mongo):
+    """Get all unique tags with their image counts"""
+    try:
+        pipeline = [
+            {"$unwind": "$tags"},
+            {"$group": {"_id": "$tags", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}}
+        ]
+        result = list(mongo.db.images.aggregate(pipeline))
+        return [{"tag": item["_id"], "count": item["count"]} for item in result]
+    except Exception as e:
+        logger.error(f"Error fetching tags with counts: {e}")
+        return []
+
+
+def get_trending_tag(mongo):
+    """Get the trending tag - prefers tags with 3+ images, otherwise returns most popular tag"""
+    try:
+        tags_with_counts = get_tags_with_counts(mongo)
+        if not tags_with_counts:
+            return None
+        
+        # First, try to find a tag with more than 3 images
+        for tag_data in tags_with_counts:
+            if tag_data["count"] > 3:
+                return tag_data["tag"]
+        
+        # If no tag has more than 3 images, return the tag with most images
+        return tags_with_counts[0]["tag"]
+    except Exception as e:
+        logger.error(f"Error getting trending tag: {e}")
+        return None
+
+
+def parse_tags(tags_string):
+    """Parse comma-separated tags string into a list"""
+    if not tags_string:
+        return []
+    return [tag.strip().lower() for tag in tags_string.split(',') if tag.strip()]
+
+
 def get_image_by_id(mongo, image_id):
     """Get a single image by its ID"""
     try:
@@ -128,6 +195,9 @@ def upload_image(mongo):
             content_type=CONTENT_TYPES.get(extension, 'image/jpeg')
         )
         
+        # Parse tags from form
+        tags = parse_tags(request.form.get("tags", ""))
+        
         # Save metadata to MongoDB
         image_data = {
             "file_id": file_id,
@@ -137,6 +207,7 @@ def upload_image(mongo):
             "caption": request.form.get("caption", ""),
             "location": request.form.get("location", ""),
             "taken_time": request.form.get("taken_time", ""),
+            "tags": tags,
             "uploaded_at": datetime.now()
         }
         

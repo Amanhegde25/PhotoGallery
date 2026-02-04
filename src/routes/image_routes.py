@@ -1,5 +1,9 @@
-from flask import Blueprint, render_template, request, redirect, session, url_for, Response
-from src.controllers.image_controller import get_all_images, upload_image, get_image_by_id, get_image_file, update_image, delete_image
+from flask import Blueprint, render_template, request, redirect, session, url_for, Response, jsonify
+from src.controllers.image_controller import (
+    get_all_images, upload_image, get_image_by_id, get_image_file, 
+    update_image, delete_image, get_all_tags, get_images_by_tag, parse_tags,
+    get_trending_tag
+)
 from src.routes.auth_routes import login_required
 from src.logger import logger
 
@@ -11,8 +15,27 @@ def create_image_routes(mongo):
     def gallery():
         logger.info("Gallery route accessed")
         images = get_all_images(mongo)
+        tags = get_all_tags(mongo)
+        trending_tag = get_trending_tag(mongo)
         logged_in = session.get('logged_in', False)
-        return render_template("gallery.html", images=images, logged_in=logged_in)
+        return render_template("gallery.html", images=images, tags=tags, trending_tag=trending_tag, logged_in=logged_in)
+    
+    @image_bp.route("/api/images/tag/<tag>")
+    def get_images_for_tag(tag):
+        """API endpoint to get images by tag"""
+        images = get_images_by_tag(mongo, tag)
+        # Convert ObjectId to string for JSON serialization
+        images_data = []
+        for img in images:
+            images_data.append({
+                "_id": str(img["_id"]),
+                "title": img.get("title", ""),
+                "caption": img.get("caption", ""),
+                "location": img.get("location", ""),
+                "taken_time": img.get("taken_time", ""),
+                "tags": img.get("tags", [])
+            })
+        return jsonify(images_data)
     
     @image_bp.route("/upload", methods=["GET", "POST"])
     @login_required
@@ -34,11 +57,15 @@ def create_image_routes(mongo):
             return redirect(url_for('image_routes.gallery'))
         
         if request.method == "POST":
+            # Parse tags from form
+            tags = parse_tags(request.form.get("tags", ""))
+            
             update_data = {
                 "title": request.form.get("title", image['title']),
                 "caption": request.form.get("caption", ""),
                 "location": request.form.get("location", ""),
-                "taken_time": request.form.get("taken_time", "")
+                "taken_time": request.form.get("taken_time", ""),
+                "tags": tags
             }
             update_image(mongo, image_id, update_data)
             logger.info(f"Image {image_id} updated")
@@ -63,3 +90,4 @@ def create_image_routes(mongo):
         return Response(file_data, mimetype=content_type)
     
     return image_bp
+
